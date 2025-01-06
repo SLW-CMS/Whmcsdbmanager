@@ -14,9 +14,6 @@
 - **Yeni Tablo Oluşturma**: Kolayca basit bir tablo ekleyebilirsiniz.  
 - **Tam Veritabanı Yedeği**: `mysqldump` komutuyla `.sql` formatında tam veritabanı yedeği almanızı sağlar. (Sunucunuzda `exec()` fonksiyonu ve `mysqldump` desteği gerekiyorsa.)
 
-## Ekran Görüntüleri (Opsiyonel)
-> (Bu kısma, arayüz görüntülerini ekleyebilirsiniz.)
-
 ## Kurulum
 
 1. **Dosyaları İndirin**  
