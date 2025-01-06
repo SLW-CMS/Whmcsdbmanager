@@ -1,7 +1,3 @@
-Aşağıda örnek bir **README.md** içeriği paylaşıyorum. Bu belgeyi GitHub deposunda projeye ekleyerek eklentiyi tanıtabilir, kurulum ve kullanım talimatlarını net bir şekilde sunabilirsiniz.
-
----
-
 # Whmcs Dbmanager
 
 **Whmcs Dbmanager**, WHMCS üzerinde **veritabanı tablolarını yönetme**, **log tablolarını hızlı temizleme**, **toplu işlemler (export/clean/drop/optimize)** ve **tam veritabanı yedeği alma** gibi işlemleri kolayca yapabileceğiniz bir addon modülüdür.
