@@ -1,5 +1,10 @@
 <?php
 
+// Hata raporlamayı etkinleştirme (geliştirme aşamasında kullanın, canlı ortamda devre dışı bırakın)
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 use WHMCS\Database\Capsule;
 
 if (!defined("WHMCS")) {
@@ -29,7 +34,11 @@ function whmcsdbmanager_activate()
 {
     try {
         // Örnek: Gerekliyse tablolar oluşturabilirsiniz
-        // Capsule::schema()->create(...);
+        // Capsule::schema()->create('tblwhmcsdbmanager', function ($table) {
+        //     $table->increments('id');
+        //     $table->string('table_name');
+        //     $table->timestamps();
+        // });
 
         return [
             'status' => 'success',
@@ -49,8 +58,8 @@ function whmcsdbmanager_activate()
 function whmcsdbmanager_deactivate()
 {
     try {
-        // Örnek: pasifleştirirken tabloları silebilirsiniz
-        // Capsule::schema()->dropIfExists(...);
+        // Örnek: Pasifleştirirken tabloları silebilirsiniz
+        // Capsule::schema()->dropIfExists('tblwhmcsdbmanager');
 
         return [
             'status' => 'success',
@@ -69,9 +78,26 @@ function whmcsdbmanager_deactivate()
  */
 function whmcsdbmanager_upgrade($vars)
 {
-    // Örnek: Sürüm kontrolü yapıp yeni alanlar ekleyebilirsiniz
-    $version = $vars['version'];
-    // if ($version < 1.1) { ... }
+    try {
+        // Sürüm kontrolü yapıp gerekli güncellemeleri gerçekleştirin
+        $version = $vars['version'];
+        // Örnek:
+        // if (version_compare($version, '1.1', '<')) {
+        //     Capsule::schema()->table('tblwhmcsdbmanager', function ($table) {
+        //         $table->string('new_field')->nullable();
+        //     });
+        // }
+
+        return [
+            'status' => 'success',
+            'description' => 'Whmcs Dbmanager eklentisi başarıyla güncellendi.',
+        ];
+    } catch (\Exception $e) {
+        return [
+            'status' => 'error',
+            'description' => 'Yükseltme esnasında hata oluştu: ' . $e->getMessage(),
+        ];
+    }
 }
 
 /**
@@ -145,70 +171,79 @@ function whmcsdbmanager_output($vars)
                         switch ($action) {
                             case 'clean':
                                 Capsule::statement("TRUNCATE TABLE `$tableName`");
-                                $operationResult .= "`$tableName` başarıyla temizlendi.\n";
+                                $operationResult .= "`$tableName` başarıyla temizlendi.<br>";
                                 break;
                             case 'drop':
                                 Capsule::statement("DROP TABLE `$tableName`");
-                                $operationResult .= "`$tableName` başarıyla kaldırıldı.\n";
+                                $operationResult .= "`$tableName` başarıyla kaldırıldı.<br>";
                                 break;
                             case 'export':
                                 $results = Capsule::select("SELECT * FROM `$tableName`");
-                                $json    = json_encode($results);
-                                file_put_contents("export_{$tableName}.json", $json);
-                                $operationResult .= "`$tableName` başarıyla dışarı aktarıldı (export_{$tableName}.json).\n";
+                                $json    = json_encode($results, JSON_PRETTY_PRINT);
+                                $exportFile = 'export_' . $tableName . '_' . date('Y-m-d_H-i-s') . '.json';
+                                if (file_put_contents($exportFile, $json) !== false) {
+                                    $operationResult .= "`$tableName` başarıyla dışarı aktarıldı ($exportFile).<br>";
+                                } else {
+                                    $operationResult .= "`$tableName` dışarı aktarma başarısız oldu.<br>";
+                                }
                                 break;
                             case 'optimize':
                                 Capsule::statement("OPTIMIZE TABLE `$tableName`");
-                                $operationResult .= "`$tableName` optimize edildi.\n";
+                                $operationResult .= "`$tableName` optimize edildi.<br>";
                                 break;
                         }
                     }
                 } else {
-                    $operationResult .= "Lütfen işlem yapmak için en az bir tablo seçin.\n";
+                    $operationResult .= "Lütfen işlem yapmak için en az bir tablo seçin.<br>";
                 }
             }
 
             // -- 2) Yeni Tablo Oluşturma
             elseif ($action === 'create') {
                 if (!empty($newTableName)) {
-                    Capsule::statement("CREATE TABLE `$newTableName` (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        data TEXT
-                    ) ENGINE=InnoDB CHARSET=utf8mb4");
-                    $operationResult .= "`$newTableName` başarıyla oluşturuldu.\n";
+                    // Validate table name (only letters, numbers, and underscores)
+                    if (preg_match('/^[A-Za-z0-9_]+$/', $newTableName)) {
+                        Capsule::statement("CREATE TABLE `$newTableName` (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            data TEXT
+                        ) ENGINE=InnoDB CHARSET=utf8mb4");
+                        $operationResult .= "`$newTableName` başarıyla oluşturuldu.<br>";
+                    } else {
+                        $operationResult .= "Geçersiz tablo adı. Sadece harf, rakam ve alt çizgi kullanılabilir.<br>";
+                    }
                 } else {
-                    $operationResult .= "Tablo adı boş olamaz.\n";
+                    $operationResult .= "Tablo adı boş olamaz.<br>";
                 }
             }
 
             // -- 3) Full Backup (mysqldump)
            elseif ($action === 'fullbackup') {
 
-				// exec() kontrolü
-				if (!function_exists('exec')) {
-					// exec devre dışı, hata döndürmek yerine kullanıcıya bildirelim
-					$operationResult .= "Sunucunuzda exec() fonksiyonu devre dışı bırakılmış. Tam yedek alma işlemi yapılamıyor.\n";
-				} else {
-					// Normal mysqldump işlemleri
-					$dbName = Capsule::connection()->getDatabaseName();
-					$dbHost = Capsule::connection()->getConfig('host');
-					$dbUser = Capsule::connection()->getConfig('username');
-					$dbPass = Capsule::connection()->getConfig('password');
+                // exec() kontrolü
+                if (!function_exists('exec')) {
+                    // exec devre dışı, hata döndürmek yerine kullanıcıya bildirelim
+                    $operationResult .= "Sunucunuzda exec() fonksiyonu devre dışı bırakılmış. Tam yedek alma işlemi yapılamıyor.<br>";
+                } else {
+                    // Normal mysqldump işlemleri
+                    $dbName = Capsule::connection()->getDatabaseName();
+                    $dbHost = Capsule::connection()->getConfig('host');
+                    $dbUser = Capsule::connection()->getConfig('username');
+                    $dbPass = Capsule::connection()->getConfig('password');
 
-					$filename = 'full_backup_' . date('Y-m-d_H-i-s') . '.sql';
-					$command  = "mysqldump --host=\"{$dbHost}\" --user=\"{$dbUser}\" --password=\"{$dbPass}\" \"{$dbName}\" > \"{$filename}\"";
+                    $filename = 'full_backup_' . date('Y-m-d_H-i-s') . '.sql';
+                    $command  = "mysqldump --host=\"{$dbHost}\" --user=\"{$dbUser}\" --password=\"{$dbPass}\" \"{$dbName}\" > \"{$filename}\"";
 
-					exec($command, $output, $status);
-					if ($status === 0) {
-						$operationResult .= "Tüm veritabanı yedeği başarıyla alındı: <strong>{$filename}</strong>\n";
-					} else {
-						$operationResult .= "Yedek alınırken bir hata oluştu. (Çıkış kodu: {$status})\n";
-					}
-				}
-			}
+                    exec($command, $output, $status);
+                    if ($status === 0) {
+                        $operationResult .= "Tüm veritabanı yedeği başarıyla alındı: <strong>{$filename}</strong><br>";
+                    } else {
+                        $operationResult .= "Yedek alınırken bir hata oluştu. (Çıkış kodu: {$status})<br>";
+                    }
+                }
+            }
 
         } catch (\Exception $e) {
-            $operationResult .= "Hata oluştu: " . $e->getMessage() . "\n";
+            $operationResult .= "Hata oluştu: " . $e->getMessage() . "<br>";
         }
     }
 
@@ -258,13 +293,13 @@ function whmcsdbmanager_output($vars)
     // Operasyon sonuç mesajı
     if (!empty($operationResult)) {
         echo '<div class="alert alert-info" role="alert">';
-        echo nl2br(htmlspecialchars($operationResult));
+        echo $operationResult;
         echo '</div>';
     }
 
     // Veritabanı Bilgisi
     echo '
-    <div class="d-flex justify-content-between align-items-center mb-3" style="display:flex; justify-content:space-between;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h5>Veritabanı Toplam Boyutu: '. round($dbSize, 2) .' MB</h5>
             <p>Toplam Tablolar: '. $tableCount .'</p>
@@ -301,12 +336,12 @@ function whmcsdbmanager_output($vars)
                 foreach ($defaultCleanupTables as $table) {
                     $tableSafe = htmlspecialchars($table);
                     echo '
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="tables[]" value="'. $tableSafe .'" id="default_'. $tableSafe .'">
-                        <label class="form-check-label" for="default_'. $tableSafe .'">
-                            '. $tableSafe .'
-                        </label>
-                    </div>';
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="tables[]" value="'. $tableSafe .'" id="default_'. $tableSafe .'">
+                    <label class="form-check-label" for="default_'. $tableSafe .'">
+                        '. $tableSafe .'
+                    </label>
+                </div>';
                 }
     echo '
             </form>
