@@ -18,7 +18,7 @@ function whmcsdbmanager_config()
 {
     return [
         'name'        => 'Whmcs Dbmanager',
-        'description' => 'WHMCS Log Temizleme ve Optimize Paneli (Capsule Entegrasyonlu)',
+        'description' => 'WHMCS Log Temizleme ve Optimize Paneli',
         'version'     => '1.0',
         'author'      => 'Ali Çömez (Slaweally)',
         'fields'      => [
@@ -33,24 +33,90 @@ function whmcsdbmanager_config()
 function whmcsdbmanager_activate()
 {
     try {
-        // Örnek: Gerekliyse tablolar oluşturabilirsiniz
-        // Capsule::schema()->create('tblwhmcsdbmanager', function ($table) {
-        //     $table->increments('id');
-        //     $table->string('table_name');
-        //     $table->timestamps();
-        // });
+        // Gerekli PHP uzantıları kontrolü
+        $requiredExtensions = ['pdo_mysql', 'json', 'mbstring'];
+        $missingExtensions = [];
+
+        foreach ($requiredExtensions as $ext) {
+            if (!extension_loaded($ext)) {
+                $missingExtensions[] = $ext;
+            }
+        }
+
+        if (!empty($missingExtensions)) {
+            throw new \Exception('Eksik PHP uzantıları: ' . implode(', ', $missingExtensions));
+        }
+
+        // Versiyon kontrolü
+        $currentVersion = Capsule::table('tbladdonmodules')
+            ->where('module', 'whmcsdbmanager')
+            ->where('setting', 'version')
+            ->value('value');
+
+        if ($currentVersion === null) {
+            // İlk kurulum
+            Capsule::schema()->create('tblwhmcsdbmanager_logs', function ($table) {
+                $table->increments('id');
+                $table->string('action');
+                $table->text('description');
+                $table->timestamp('created_at')->useCurrent();
+            });
+
+            // Başlangıç verisi ekleme
+            Capsule::table('tblwhmcsdbmanager_logs')->insert([
+                'action' => 'activate',
+                'description' => 'Whmcs Dbmanager eklentisi aktifleştirildi.',
+            ]);
+
+            // Varsayılan ayarları ekleme
+            Capsule::table('tbladdonmodules')->insert([
+                'module' => 'whmcsdbmanager',
+                'setting' => 'default_cleanup_limit',
+                'value' => '50',
+            ]);
+
+            // Versiyonu kaydet
+            Capsule::table('tbladdonmodules')->insert([
+                'module' => 'whmcsdbmanager',
+                'setting' => 'version',
+                'value' => '1.0',
+            ]);
+        } else {
+            // Daha önce aktifleştirilmiş, gerekliyse güncellemeleri yap
+            if (version_compare($currentVersion, '1.1', '<')) {
+                Capsule::schema()->table('tblwhmcsdbmanager_logs', function ($table) {
+                    $table->string('new_field')->nullable();
+                });
+
+                // Versiyonu güncelle
+                Capsule::table('tbladdonmodules')
+                    ->where('module', 'whmcsdbmanager')
+                    ->where('setting', 'version')
+                    ->update(['value' => '1.1']);
+            }
+        }
 
         return [
             'status' => 'success',
             'description' => 'Whmcs Dbmanager eklentisi başarıyla aktifleştirildi.',
         ];
     } catch (\Exception $e) {
+        // Hataları WHMCS loglarına kaydet
+        logModuleCall(
+            'whmcsdbmanager',
+            'activate',
+            [],
+            $e->getMessage(),
+            $e->getTraceAsString()
+        );
+
         return [
             'status' => 'error',
             'description' => 'Aktifleştirme esnasında hata oluştu: ' . $e->getMessage(),
         ];
     }
 }
+
 
 /**
  * 3) Eklenti Pasifleştirme
