@@ -124,20 +124,57 @@ function whmcsdbmanager_activate()
 function whmcsdbmanager_deactivate()
 {
     try {
-        // Örnek: Pasifleştirirken tabloları silebilirsiniz
-        // Capsule::schema()->dropIfExists('tblwhmcsdbmanager');
+        // 1. Versiyon Kontrolü
+        $currentVersion = Capsule::table('tbladdonmodules')
+            ->where('module', 'whmcsdbmanager')
+            ->where('setting', 'version')
+            ->value('value');
+
+        if ($currentVersion === null) {
+            // Eklenti zaten pasifleştirilmiş veya hiç aktifleştirilmemiş
+            return [
+                'status' => 'success',
+                'description' => 'Whmcs Dbmanager eklentisi zaten pasifleştirildi.',
+            ];
+        }
+
+        // 2. Oluşturulan Tabloların Silinmesi
+        // Eğer eklentinin ihtiyacı olan tablolar silinmesi gerekiyorsa, aşağıdaki satırın yorumunu kaldırın
+        Capsule::schema()->dropIfExists('tblwhmcsdbmanager_logs');
+
+        // 3. Ayarların Temizlenmesi
+        Capsule::table('tbladdonmodules')
+            ->where('module', 'whmcsdbmanager')
+            ->delete();
+
+        // 4. Versiyon Bilgisini Silme
+        // Eğer versiyon bilgisi ayrı bir ayar olarak kaydedildiyse, bunu da temizleyin
+        // Capsule::table('tbladdonmodules')
+        //     ->where('module', 'whmcsdbmanager')
+        //     ->where('setting', 'version')
+        //     ->delete();
 
         return [
             'status' => 'success',
-            'description' => 'Whmcs Dbmanager eklentisi başarıyla pasifleştirildi.',
+            'description' => 'Whmcs Dbmanager eklentisi başarıyla pasifleştirildi ve veritabanı temizlendi.',
         ];
     } catch (\Exception $e) {
+        // Hataları WHMCS loglarına kaydet
+        logModuleCall(
+            'whmcsdbmanager',
+            'deactivate',
+            [],
+            $e->getMessage(),
+            $e->getTraceAsString()
+        );
+
         return [
             'status' => 'error',
             'description' => 'Pasifleştirme esnasında hata oluştu: ' . $e->getMessage(),
         ];
     }
 }
+
 
 /**
  * 4) Eklenti Yükseltme (Upgrade)
