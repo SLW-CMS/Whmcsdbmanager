@@ -1,6 +1,6 @@
 <?php
 
-// Hata raporlamayı etkinleştirme (geliştirme aşamasında kullanın, canlı ortamda devre dışı bırakın)
+// Enable error reporting (use during development, disable in production)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -8,32 +8,32 @@ error_reporting(E_ALL);
 use WHMCS\Database\Capsule;
 
 if (!defined("WHMCS")) {
-    die("Bu dosyaya doğrudan erişemezsiniz");
+    die("You cannot access this file directly");
 }
 
 /**
- * 1) Eklenti Temel Bilgileri (Config)
+ * 1) Addon Configuration
  */
 function whmcsdbmanager_config()
 {
     return [
-        'name'        => 'Whmcs Dbmanager',
-        'description' => 'WHMCS Log Temizleme ve Optimize Paneli',
-        'version'     => '1.1',
-        'author'      => 'Ali Çömez (Slaweally)',
-        'fields'      => [
-            // Gerekirse ek ayarlar tanımlayabilirsiniz
+        'name' => 'WHMCS Dbmanager',
+        'description' => 'WHMCS Log Cleaning and Optimization Panel',
+        'version' => '1.1',
+        'author' => 'Ali Çömez (Slaweally)',
+        'fields' => [
+            // Define additional settings if necessary
         ],
     ];
 }
 
 /**
- * 2) Eklenti Aktifleştirme
+ * 2) Addon Activation
  */
 function whmcsdbmanager_activate()
 {
     try {
-        // Gerekli PHP uzantıları kontrolü
+        // Check required PHP extensions
         $requiredExtensions = ['pdo_mysql', 'json', 'mbstring'];
         $missingExtensions = [];
 
@@ -44,17 +44,17 @@ function whmcsdbmanager_activate()
         }
 
         if (!empty($missingExtensions)) {
-            throw new \Exception('Eksik PHP uzantıları: ' . implode(', ', $missingExtensions));
+            throw new \Exception('Missing PHP extensions: ' . implode(', ', $missingExtensions));
         }
 
-        // Versiyon kontrolü
+        // Version control
         $currentVersion = Capsule::table('tbladdonmodules')
             ->where('module', 'whmcsdbmanager')
             ->where('setting', 'version')
             ->value('value');
 
         if ($currentVersion === null) {
-            // İlk kurulum
+            // Initial installation
             Capsule::schema()->create('tblwhmcsdbmanager_logs', function ($table) {
                 $table->increments('id');
                 $table->string('action');
@@ -62,34 +62,34 @@ function whmcsdbmanager_activate()
                 $table->timestamp('created_at')->useCurrent();
             });
 
-            // Başlangıç verisi ekleme
+            // Insert initial data
             Capsule::table('tblwhmcsdbmanager_logs')->insert([
                 'action' => 'activate',
-                'description' => 'Whmcs Dbmanager eklentisi aktifleştirildi.',
+                'description' => 'WHMCS Dbmanager addon has been activated.',
             ]);
 
-            // Varsayılan ayarları ekleme
+            // Insert default settings
             Capsule::table('tbladdonmodules')->insert([
                 'module' => 'whmcsdbmanager',
                 'setting' => 'default_cleanup_limit',
                 'value' => '50',
             ]);
 
-            // Versiyonu kaydet
+            // Save version
             Capsule::table('tbladdonmodules')->insert([
                 'module' => 'whmcsdbmanager',
                 'setting' => 'version',
                 'value' => '1.0',
             ]);
         } else {
-            // Daha önce aktifleştirilmiş, gerekliyse güncellemeleri yap
+            // Already activated, perform updates if necessary
             if (version_compare($currentVersion, '1.1', '<')) {
-                // Örneğin, yeni bir tablo eklemek veya mevcut tabloları değiştirmek
+                // For example, add a new table or modify existing tables
                 // Capsule::schema()->table('tblwhmcsdbmanager_logs', function ($table) {
                 //     $table->string('new_field')->nullable();
                 // });
 
-                // Versiyonu güncelle
+                // Update version
                 Capsule::table('tbladdonmodules')
                     ->where('module', 'whmcsdbmanager')
                     ->where('setting', 'version')
@@ -99,10 +99,10 @@ function whmcsdbmanager_activate()
 
         return [
             'status' => 'success',
-            'description' => 'Whmcs Dbmanager eklentisi başarıyla aktifleştirildi.',
+            'description' => 'WHMCS Dbmanager addon has been successfully activated.',
         ];
     } catch (\Exception $e) {
-        // Hataları WHMCS loglarına kaydet
+        // Log errors to WHMCS logs
         logModuleCall(
             'whmcsdbmanager',
             'activate',
@@ -113,26 +113,26 @@ function whmcsdbmanager_activate()
 
         return [
             'status' => 'error',
-            'description' => 'Aktifleştirme esnasında hata oluştu: ' . $e->getMessage(),
+            'description' => 'An error occurred during activation: ' . $e->getMessage(),
         ];
     }
 }
 
 /**
- * 3) Eklenti Pasifleştirme
+ * 3) Addon Deactivation
  */
 function whmcsdbmanager_deactivate()
 {
     try {
-        // Örnek: Pasifleştirirken tabloları silebilirsiniz
+        // Example: You can drop tables upon deactivation
         // Capsule::schema()->dropIfExists('tblwhmcsdbmanager_logs');
 
         return [
             'status' => 'success',
-            'description' => 'Whmcs Dbmanager eklentisi başarıyla pasifleştirildi.',
+            'description' => 'WHMCS Dbmanager addon has been successfully deactivated.',
         ];
     } catch (\Exception $e) {
-        // Hataları WHMCS loglarına kaydet
+        // Log errors to WHMCS logs
         logModuleCall(
             'whmcsdbmanager',
             'deactivate',
@@ -143,20 +143,20 @@ function whmcsdbmanager_deactivate()
 
         return [
             'status' => 'error',
-            'description' => 'Pasifleştirme esnasında hata oluştu: ' . $e->getMessage(),
+            'description' => 'An error occurred during deactivation: ' . $e->getMessage(),
         ];
     }
 }
 
 /**
- * 4) Eklenti Yükseltme (Upgrade)
+ * 4) Addon Upgrade
  */
 function whmcsdbmanager_upgrade($vars)
 {
     try {
-        // Sürüm kontrolü yapıp gerekli güncellemeleri gerçekleştirin
+        // Perform version checks and necessary updates
         $version = $vars['version'];
-        // Örnek:
+        // Example:
         // if (version_compare($version, '1.1', '<')) {
         //     Capsule::schema()->table('tblwhmcsdbmanager_logs', function ($table) {
         //         $table->string('new_field')->nullable();
@@ -165,10 +165,10 @@ function whmcsdbmanager_upgrade($vars)
 
         return [
             'status' => 'success',
-            'description' => 'Whmcs Dbmanager eklentisi başarıyla güncellendi.',
+            'description' => 'WHMCS Dbmanager addon has been successfully upgraded.',
         ];
     } catch (\Exception $e) {
-        // Hataları WHMCS loglarına kaydet
+        // Log errors to WHMCS logs
         logModuleCall(
             'whmcsdbmanager',
             'upgrade',
@@ -179,28 +179,28 @@ function whmcsdbmanager_upgrade($vars)
 
         return [
             'status' => 'error',
-            'description' => 'Yükseltme esnasında hata oluştu: ' . $e->getMessage(),
+            'description' => 'An error occurred during upgrade: ' . $e->getMessage(),
         ];
     }
 }
 
 /**
- * 5) Addon Çıktısı (Admin Panelinde Gösterilen Kısım)
+ * 5) Addon Output (Displayed in Admin Panel)
  */
 function whmcsdbmanager_output($vars)
 {
-    // A) Genel değişkenler
+    // A) General variables
     $dbStatus        = true;
     $errorMsg        = '';
     $operationResult = '';
 
-    // Yeni parametre: current_table veya edit action
+    // New parameters: current_table or edit action
     $currentTable = isset($_GET['current_table']) ? trim($_GET['current_table']) : '';
     $editAction   = isset($_GET['action']) && $_GET['action'] === 'edit';
     $editTable    = isset($_GET['table']) ? trim($_GET['table']) : '';
     $editId       = isset($_GET['id']) ? trim($_GET['id']) : '';
 
-    // Veritabanı bağlantısını kontrol et
+    // Check database connection
     try {
         Capsule::connection()->getPdo();
     } catch (\Exception $e) {
@@ -210,24 +210,24 @@ function whmcsdbmanager_output($vars)
 
     if (!$dbStatus) {
         echo '<div class="alert alert-danger" role="alert">';
-        echo 'Veritabanı bağlantısı başarısız: ' . htmlspecialchars($errorMsg);
+        echo 'Database connection failed: ' . htmlspecialchars($errorMsg);
         echo '</div>';
         return;
     }
 
-    // Eğer edit action varsa, düzenleme formunu göster
+    // If edit action, display edit form
     if ($editAction && !empty($editTable) && !empty($editId)) {
         display_edit_form($editTable, $editId, $operationResult, $errorMsg);
         return;
     }
 
-    // Eğer current_table varsa, tablo verilerini göster
+    // If current_table is set, display table data
     if (!empty($currentTable)) {
         display_table_data($currentTable, $operationResult, $errorMsg);
         return;
     }
 
-    // Sayfalama
+    // Pagination
     $limitsArray   = [50, 100, 300, 500];
     $selectedLimit = (isset($_REQUEST['limit']) && in_array($_REQUEST['limit'], $limitsArray))
         ? (int)$_REQUEST['limit']
@@ -235,7 +235,7 @@ function whmcsdbmanager_output($vars)
     $page   = isset($_REQUEST['page']) ? max(1, (int)$_REQUEST['page']) : 1;
     $offset = ($page - 1) * $selectedLimit;
 
-    // Varsayılan temizlik önerisi tabloları
+    // Default cleanup suggested tables
     $defaultCleanupTables = [
         'tblactivitylog',
         'tblmodulelog',
@@ -247,25 +247,25 @@ function whmcsdbmanager_output($vars)
         'tblupdatelog'
     ];
 
-    // Tablo listesi
+    // Table list
     $tables     = [];
     $tableCount = 0;
     $dbSize     = 0.0;
 
-    // B) SHOW TABLE STATUS ile tablo bilgilerini çek
+    // B) Fetch table information using SHOW TABLE STATUS
     try {
         $allTables = Capsule::select("SHOW TABLE STATUS");
         $tableCount = count($allTables);
 
-        // Veritabanı toplam boyutu
+        // Total database size
         $dataLengths = [];
         foreach ($allTables as $tbl) {
-            // Bazı MySQL versiyonlarında "Data_length" büyük/küçük harf farkı olabilir
+            // Some MySQL versions may have different cases for "Data_length"
             $dataLengths[] = $tbl->Data_length;
         }
         $dbSize = array_sum($dataLengths) / 1024 / 1024; // MB
 
-        // $allTables bir dizi stdClass. array_slice kullanabilmek için array'e dönüştürelim
+        // Convert stdClass array to associative array for array_slice
         $allTablesArray = json_decode(json_encode($allTables), true);
         $tables = array_slice($allTablesArray, $offset, $selectedLimit);
 
@@ -274,48 +274,48 @@ function whmcsdbmanager_output($vars)
         $errorMsg = $e->getMessage();
     }
 
-    // C) POST (Toplu İşlemler, Yeni Tablo Oluşturma, Full Backup)
+    // C) POST (Bulk Operations, Create New Table, Full Backup)
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $dbStatus) {
         $action         = $_POST['action']         ?? '';
         $selectedTables = $_POST['tables']         ?? [];
         $newTableName   = trim($_POST['new_table_name'] ?? '');
 
         try {
-            // -- 1) Toplu İşlemler
+            // -- 1) Bulk Operations
             if (in_array($action, ['export', 'clean', 'drop', 'optimize'])) {
                 if (!empty($selectedTables)) {
                     foreach ($selectedTables as $tableName) {
                         switch ($action) {
                             case 'clean':
                                 Capsule::statement("TRUNCATE TABLE `$tableName`");
-                                $operationResult .= "`$tableName` başarıyla temizlendi.<br>";
+                                $operationResult .= "`$tableName` has been successfully cleaned.<br>";
                                 break;
                             case 'drop':
                                 Capsule::statement("DROP TABLE `$tableName`");
-                                $operationResult .= "`$tableName` başarıyla kaldırıldı.<br>";
+                                $operationResult .= "`$tableName` has been successfully dropped.<br>";
                                 break;
                             case 'export':
                                 $results = Capsule::select("SELECT * FROM `$tableName`");
                                 $json    = json_encode($results, JSON_PRETTY_PRINT);
                                 $exportFile = 'export_' . $tableName . '_' . date('Y-m-d_H-i-s') . '.json';
                                 if (file_put_contents($exportFile, $json) !== false) {
-                                    $operationResult .= "`$tableName` başarıyla dışarı aktarıldı ($exportFile).<br>";
+                                    $operationResult .= "`$tableName` has been successfully exported ($exportFile).<br>";
                                 } else {
-                                    $operationResult .= "`$tableName` dışarı aktarma başarısız oldu.<br>";
+                                    $operationResult .= "Failed to export `$tableName`.<br>";
                                 }
                                 break;
                             case 'optimize':
                                 Capsule::statement("OPTIMIZE TABLE `$tableName`");
-                                $operationResult .= "`$tableName` optimize edildi.<br>";
+                                $operationResult .= "`$tableName` has been optimized.<br>";
                                 break;
                         }
                     }
                 } else {
-                    $operationResult .= "Lütfen işlem yapmak için en az bir tablo seçin.<br>";
+                    $operationResult .= "Please select at least one table to perform the action.<br>";
                 }
             }
 
-            // -- 2) Yeni Tablo Oluşturma
+            // -- 2) Create New Table
             elseif ($action === 'create') {
                 if (!empty($newTableName)) {
                     // Validate table name (only letters, numbers, and underscores)
@@ -324,24 +324,24 @@ function whmcsdbmanager_output($vars)
                             id INT AUTO_INCREMENT PRIMARY KEY,
                             data TEXT
                         ) ENGINE=InnoDB CHARSET=utf8mb4");
-                        $operationResult .= "`$newTableName` başarıyla oluşturuldu.<br>";
+                        $operationResult .= "`$newTableName` has been successfully created.<br>";
                     } else {
-                        $operationResult .= "Geçersiz tablo adı. Sadece harf, rakam ve alt çizgi kullanılabilir.<br>";
+                        $operationResult .= "Invalid table name. Only letters, numbers, and underscores are allowed.<br>";
                     }
                 } else {
-                    $operationResult .= "Tablo adı boş olamaz.<br>";
+                    $operationResult .= "Table name cannot be empty.<br>";
                 }
             }
 
             // -- 3) Full Backup (mysqldump)
             elseif ($action === 'fullbackup') {
 
-                // exec() kontrolü
+                // Check if exec() is enabled
                 if (!function_exists('exec')) {
-                    // exec devre dışı, hata döndürmek yerine kullanıcıya bildirelim
-                    $operationResult .= "Sunucunuzda exec() fonksiyonu devre dışı bırakılmış. Tam yedek alma işlemi yapılamıyor.<br>";
+                    // exec is disabled, notify the user instead of throwing an error
+                    $operationResult .= "The exec() function is disabled on your server. Full backup cannot be performed.<br>";
                 } else {
-                    // Normal mysqldump işlemleri
+                    // Normal mysqldump operations
                     $dbName = Capsule::connection()->getDatabaseName();
                     $dbHost = Capsule::connection()->getConfig('host');
                     $dbUser = Capsule::connection()->getConfig('username');
@@ -352,89 +352,89 @@ function whmcsdbmanager_output($vars)
 
                     exec($command, $output, $status);
                     if ($status === 0) {
-                        $operationResult .= "Tüm veritabanı yedeği başarıyla alındı: <strong>{$filename}</strong><br>";
+                        $operationResult .= "Full database backup has been successfully created: <strong>{$filename}</strong><br>";
                     } else {
-                        $operationResult .= "Yedek alınırken bir hata oluştu. (Çıkış kodu: {$status})<br>";
+                        $operationResult .= "An error occurred while creating the backup. (Exit code: {$status})<br>";
                     }
                 }
             }
 
         } catch (\Exception $e) {
-            $operationResult .= "Hata oluştu: " . $e->getMessage() . "<br>";
+            $operationResult .= "An error occurred: " . $e->getMessage() . "<br>";
         }
     }
 
-    // D) HTML Çıkışı
+    // D) HTML Output
     echo '<div style="margin:15px;">';
     
-    // Başlık
-    echo '<h2>Whmcs Dbmanager</h2>';
+    // Title
+    echo '<h2>WHMCS Dbmanager</h2>';
 
-    // Uyarı + Spoiler (Nasıl Kullanılır?)
+    // Warning + Spoiler (How to Use?)
     echo '
     <div class="alert alert-warning" role="alert">
-        <strong>Uyarı:</strong> Bu araç yalnızca profesyoneller içindir. Yanlış işlem geri dönüşü olmayan sorunlara yol açabilir.
+        <strong>Warning:</strong> This tool is for professionals only. Incorrect operations can lead to irreversible issues.
     </div>
     
-    <!-- Kullanım Rehberi (Spoiler/Collapse) -->
+    <!-- Usage Guide (Spoiler/Collapse) -->
     <div class="alert alert-info" role="alert">
-        <strong>Nasıl Kullanılır?</strong> 
+        <strong>How to Use:</strong> 
         <button class="btn btn-sm btn-link" type="button" data-toggle="collapse" data-target="#usageDetails" aria-expanded="false" aria-controls="usageDetails">
-            Detayları Göster
+            Show Details
         </button>
 
         <div class="collapse mt-3" id="usageDetails">
             <div class="card card-body">
-                <p>Bu panel sayesinde WHMCS veritabanınızda yer alan tabloları temizleyebilir, silebilir (drop), optimize edebilir, export (JSON) alabilir ve yeni tablo oluşturabilirsiniz.</p>
+                <p>With this panel, you can clean, drop, optimize, export (JSON), and create new tables in your WHMCS database.</p>
                 <ul>
-                    <li><strong>Varsayılan Temizlik Önerisi:</strong> Sıklıkla log kaydı biriken tabloları kısa sürede temizlemenizi sağlar.</li>
-                    <li><strong>Toplu İşlemler:</strong> PhpMyAdmin benzeri şekilde birden fazla tabloyu seçip tek tıkla temizle (truncate), sil (drop), optimize vb. işlemler yapabilirsiniz.</li>
-                    <li><strong>Yeni Tablo Oluştur:</strong> Basit bir tablo oluşturmak isterseniz kullanabilirsiniz.</li>
-                    <li><strong>Full Yedek Al:</strong> Mevcut WHMCS veritabanının tamamının <em>.sql</em> uzantılı yedeğini alır. Sunucunuzda <code>mysqldump</code> komutu çalışabilir olmalıdır.</li>
+                    <li><strong>Default Cleanup Suggestion:</strong> Quickly clean tables that frequently accumulate log entries.</li>
+                    <li><strong>Bulk Operations:</strong> Similar to PhpMyAdmin, select multiple tables and perform actions like truncate, drop, optimize, etc., with a single click.</li>
+                    <li><strong>Create New Table:</strong> Use this if you want to create a simple new table.</li>
+                    <li><strong>Full Backup:</strong> Creates a <em>.sql</em> backup of your entire WHMCS database. The <code>mysqldump</code> command must be enabled on your server.</li>
                 </ul>
-                <p>İşlem öncesi onay isteyen ek bir modal açılır, böylece yanlışlıkla tablo silme veya boşaltma riskini azaltmış olursunuz.</p>
+                <p>A confirmation modal appears before performing actions to reduce the risk of accidentally dropping or truncating tables.</p>
             </div>
         </div>
     </div>
     ';
 
-    // Operasyon sonuç mesajı
+    // Operation result message
     if (!empty($operationResult)) {
         echo '<div class="alert alert-info" role="alert">';
         echo $operationResult;
         echo '</div>';
     }
 
-    // Veritabanı Bilgisi
+    // Database Information
     echo '
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h5>Veritabanı Toplam Boyutu: '. round($dbSize, 2) .' MB</h5>
-            <p>Toplam Tablolar: '. $tableCount .'</p>
+            <h5>Total Database Size: '. round($dbSize, 2) .' MB</h5>
+            <p>Total Tables: '. $tableCount .'</p>
         </div>
 
         <div>
-            <!-- Varsayılan Temizlik Önerisi Butonu (Modal Tetikleyici) -->
+            <!-- Default Cleanup Suggestion Button (Modal Trigger) -->
             <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#defaultTablesModal">
-                Varsayılan Temizlik Önerisi
+                Default Cleanup Suggestion
             </button>
 
-            <!-- Tüm Yedek Alma (Full Backup) Butonu - Ayrı bir modal ile onay alacağız -->
+            <!-- Full Backup Button - Will trigger a separate modal for confirmation -->
             <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#fullBackupModal">
-                Tam Yedek Al
+                Take Full Backup
             </button>
         </div>
     </div>
     ';
 
-    // Modal: Varsayılan Temizlik Önerisi Tabloları
+    // Modal: Default Cleanup Suggested Tables
     echo '
     <div class="modal fade" id="defaultTablesModal" tabindex="-1" role="dialog" aria-labelledby="defaultTablesModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-scrollable" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="defaultTablesModalLabel">Varsayılan Temizlik Önerilen Tablolar</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Kapat">
+            <h5 class="modal-title" id="defaultTablesModalLabel">Default Cleanup Suggested Tables</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -455,15 +455,15 @@ function whmcsdbmanager_output($vars)
             </form>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
-            <button type="submit" form="defaultCleanupForm" class="btn btn-danger">Seçilenleri Temizle</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="submit" form="defaultCleanupForm" class="btn btn-danger">Clean Selected</button>
           </div>
         </div>
       </div>
     </div>
     ';
 
-    // Modal: Full Backup Onayı
+    // Modal: Full Backup Confirmation
     echo '
     <div class="modal fade" id="fullBackupModal" tabindex="-1" role="dialog" aria-labelledby="fullBackupModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
@@ -471,18 +471,18 @@ function whmcsdbmanager_output($vars)
             <input type="hidden" name="action" value="fullbackup">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="fullBackupModalLabel">Tam Yedek Al</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Kapat">
+                <h5 class="modal-title" id="fullBackupModalLabel">Take Full Backup</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
               <div class="modal-body">
-                <p>Veritabanının tamamının <strong>.sql</strong> yedeğini almak üzeresiniz. Sunucunuzda <code>mysqldump</code> komutunun çalışabilir olması gerekir.</p>
-                <p><strong>Devam etmek istediğinize emin misiniz?</strong></p>
+                <p>You are about to create a <strong>.sql</strong> backup of your entire database. The <code>mysqldump</code> command must be enabled on your server.</p>
+                <p><strong>Are you sure you want to proceed?</strong></p>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Vazgeç</button>
-                <button type="submit" class="btn btn-primary">Evet, Yedek Al</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Yes, Backup</button>
               </div>
             </div>
         </form>
@@ -490,18 +490,18 @@ function whmcsdbmanager_output($vars)
     </div>
     ';
 
-    // Yeni Tablo Oluşturma
+    // Create New Table
     echo '
     <div class="card mb-4">
         <div class="card-body">
-            <h5 class="card-title">Yeni Tablo Oluştur</h5>
+            <h5 class="card-title">Create New Table</h5>
             <form method="POST" class="row g-3">
                 <div class="col-auto">
-                    <label for="new_table_name" class="visually-hidden">Tablo Adı</label>
-                    <input type="text" class="form-control" id="new_table_name" name="new_table_name" placeholder="Yeni tablo adı girin" required>
+                    <label for="new_table_name" class="visually-hidden">Table Name</label>
+                    <input type="text" class="form-control" id="new_table_name" name="new_table_name" placeholder="Enter new table name" required>
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-primary">Oluştur</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
                     <input type="hidden" name="action" value="create">
                 </div>
             </form>
@@ -509,13 +509,13 @@ function whmcsdbmanager_output($vars)
     </div>
     ';
 
-    // Tablo Listesi (Sayfalandırma)
+    // Table List (Pagination)
     echo '
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Tablo Listesi</span>
+            <span>Table List</span>
             <form method="GET" class="d-flex align-items-center">
-                <label for="limitSelect" class="mr-2 mb-0">Gösterilecek kayıt sayısı:</label>
+                <label for="limitSelect" class="mr-2 mb-0">Number of records to display:</label>
                 <select name="limit" id="limitSelect" class="form-control" style="width:auto;" onchange="this.form.submit()">';
                 foreach ($limitsArray as $lim) {
                     $selected = ($lim == $selectedLimit) ? 'selected' : '';
@@ -530,7 +530,7 @@ function whmcsdbmanager_output($vars)
     ';
 
     if (empty($tables)) {
-        echo '<div class="alert alert-warning">Hiç tablo bulunamadı.</div>';
+        echo '<div class="alert alert-warning">No tables found.</div>';
     } else {
         echo '
         <form method="POST" id="bulkActionsForm">
@@ -539,10 +539,10 @@ function whmcsdbmanager_output($vars)
                     <thead>
                         <tr>
                             <th style="width:40px;"><input type="checkbox" id="selectAll"></th>
-                            <th>Tablo Adı</th>
-                            <th>Boyut (KB)</th>
-                            <th>Kayıt Sayısı</th>
-                            <th>İşlemler</th>
+                            <th>Table Name</th>
+                            <th>Size (KB)</th>
+                            <th>Record Count</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -551,13 +551,13 @@ function whmcsdbmanager_output($vars)
             $tableName  = $tableInfo['Name'];
             $dataLength = $tableInfo['Data_length'];
 
-            // Kayıt sayısı
+            // Record count
             $count = 0;
             try {
                 $row = Capsule::selectOne("SELECT COUNT(*) as totalCount FROM `$tableName`");
                 $count = $row->totalCount;
             } catch (\Exception $ex) {
-                // Bazı tablolarda yetki veya farklı nedenlerle hata olabilir
+                // Some tables may have permission issues or other errors
             }
 
             $safeName    = htmlspecialchars($tableName);
@@ -569,8 +569,8 @@ function whmcsdbmanager_output($vars)
                 <td>'.$tableSizeKB.'</td>
                 <td>'.$count.'</td>
                 <td>
-                    <a href="?module=whmcsdbmanager&action=edit&table='.urlencode($tableName).'&id=" class="btn btn-sm btn-primary disabled">Düzenle</a>
-                    <a href="?module=whmcsdbmanager&current_table='.urlencode($tableName).'" class="btn btn-sm btn-info">Verileri Görüntüle</a>
+                    <a href="?module=whmcsdbmanager&action=edit&table='.urlencode($tableName).'&id=" class="btn btn-sm btn-primary disabled">Edit</a>
+                    <a href="?module=whmcsdbmanager&current_table='.urlencode($tableName).'" class="btn btn-sm btn-info">View Data</a>
                 </td>
             </tr>';
         }
@@ -579,13 +579,13 @@ function whmcsdbmanager_output($vars)
                 </table>
             </div>
 
-            <!-- Toplu İşlemler Butonları -->
+            <!-- Bulk Actions Buttons -->
             <div class="mt-3">
                 <input type="hidden" name="action" value="" id="bulkActionInput">
-                <button type="button" class="btn btn-info"    onclick="setBulkAction(\'export\')">Seçilenleri Dışarı Aktar</button>
-                <button type="button" class="btn btn-warning" onclick="setBulkAction(\'clean\')">Seçilenleri Boşalt (Truncate)</button>
-                <button type="button" class="btn btn-danger"  onclick="setBulkAction(\'drop\')">Seçilenleri Kaldır (Drop)</button>
-                <button type="button" class="btn btn-success" onclick="setBulkAction(\'optimize\')">Seçilenleri Optimize Et</button>
+                <button type="button" class="btn btn-info"    onclick="setBulkAction(\'export\')">Export Selected</button>
+                <button type="button" class="btn btn-warning" onclick="setBulkAction(\'clean\')">Truncate Selected</button>
+                <button type="button" class="btn btn-danger"  onclick="setBulkAction(\'drop\')">Drop Selected</button>
+                <button type="button" class="btn btn-success" onclick="setBulkAction(\'optimize\')">Optimize Selected</button>
             </div>
         </form>
         ';
@@ -595,7 +595,7 @@ function whmcsdbmanager_output($vars)
     </div> <!-- card -->
     ';
 
-    // Sayfalandırma
+    // Pagination
     $totalPages = ($tableCount > 0) ? ceil($tableCount / $selectedLimit) : 1;
     if ($totalPages > 1) {
         echo '<nav class="mt-3"><ul class="pagination">';
@@ -609,36 +609,36 @@ function whmcsdbmanager_output($vars)
         echo '</ul></nav>';
     }
 
-    // İşlem Onay Modal (Toplu İşlemler için)
+    // Operation Confirmation Modal (for Bulk Actions)
     echo '
-    <!-- İşlem Onay Modal -->
+    <!-- Operation Confirmation Modal -->
     <div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog" aria-labelledby="confirmationModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="confirmationModalLabel">İşlem Onayı</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Kapat">
+            <h5 class="modal-title" id="confirmationModalLabel">Confirm Action</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
           <div class="modal-body">
-            <p><strong><span id="confirmationActionName"></span></strong> işlemini gerçekleştirmek üzeresiniz. Emin misiniz?</p>
+            <p><strong><span id="confirmationActionName"></span></strong> operation is about to be performed. Are you sure?</p>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Hayır</button>
-            <button type="button" class="btn btn-primary" id="confirmYesBtn">Evet</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+            <button type="button" class="btn btn-primary" id="confirmYesBtn">Yes</button>
           </div>
         </div>
       </div>
     </div>
     ';
 
-    echo '</div>'; // container kapanış
+    echo '</div>'; // container closing
 
-    // JS Kodları
+    // JS Scripts
     echo "
     <script>
-        // Tüm tabloları ve satırları seç/kaldır
+        // Select/Deselect all tables and rows
         document.getElementById('selectAll')?.addEventListener('change', function() {
             const checkboxes = document.querySelectorAll('input[name=\"tables[]\"], input[name=\"delete_rows[]\"]');
             checkboxes.forEach(cb => cb.checked = this.checked);
@@ -646,24 +646,24 @@ function whmcsdbmanager_output($vars)
 
         var pendingAction = null;
 
-        // setBulkAction: işlem seçildiğinde Confirmation Modal aç
+        // setBulkAction: Open Confirmation Modal when an action is selected
         function setBulkAction(action) {
-            pendingAction = action; // İşlemi global değişkende tut
-            // Modal mesajında hangi işlemi yapıyoruz, yazalım
+            pendingAction = action; // Store action in a global variable
+            // Set the action name in the modal message
             let actionMap = {
-                'export': 'Dışarı Aktarma',
-                'clean': 'Temizleme (Truncate)',
-                'drop': 'Silme (Drop)',
-                'optimize': 'Optimize Etme'
+                'export': 'Export',
+                'clean': 'Truncate',
+                'drop': 'Drop',
+                'optimize': 'Optimize'
             };
             let actionText = actionMap[action] ? actionMap[action] : action;
             document.getElementById('confirmationActionName').textContent = actionText;
 
-            // Modal'ı aç
+            // Open the modal
             window.jQuery('#confirmationModal').modal('show');
         }
 
-        // Evet butonuna basıldığında formu submit et
+        // When the Yes button is clicked, submit the form
         document.getElementById('confirmYesBtn')?.addEventListener('click', function() {
             if (pendingAction) {
                 document.getElementById('bulkActionInput').value = pendingAction;
@@ -675,11 +675,11 @@ function whmcsdbmanager_output($vars)
 }
 
 /**
- * Tablo Verilerini Listeleme ve Yönetme Fonksiyonu
+ * Function to Display and Manage Table Data
  */
 function display_table_data($tableName, &$operationResult, &$errorMsg)
 {
-    // Veritabanı bağlantısını kontrol et
+    // Check database connection
     try {
         Capsule::connection()->getPdo();
         $dbStatus = true;
@@ -690,20 +690,20 @@ function display_table_data($tableName, &$operationResult, &$errorMsg)
 
     if (!$dbStatus) {
         echo '<div class="alert alert-danger" role="alert">';
-        echo 'Veritabanı bağlantısı başarısız: ' . htmlspecialchars($errorMsg);
+        echo 'Database connection failed: ' . htmlspecialchars($errorMsg);
         echo '</div>';
         echo '</div>'; // container
         return;
     }
 
     try {
-        // Tablo sütunlarını al
+        // Get table columns
         $columns = Capsule::getSchemaBuilder()->getColumnListing($tableName);
         if (empty($columns)) {
-            throw new \Exception("Tablo sütunları alınamadı.");
+            throw new \Exception("Failed to retrieve table columns.");
         }
 
-        // Sayfalama
+        // Pagination
         $limitsArray   = [20, 50, 100];
         $selectedLimit = (isset($_REQUEST['limit']) && in_array($_REQUEST['limit'], $limitsArray))
             ? (int)$_REQUEST['limit']
@@ -711,54 +711,54 @@ function display_table_data($tableName, &$operationResult, &$errorMsg)
         $page   = isset($_REQUEST['page']) ? max(1, (int)$_REQUEST['page']) : 1;
         $offset = ($page - 1) * $selectedLimit;
 
-        // Toplam kayıt sayısı
+        // Total record count
         $totalRecords = Capsule::table($tableName)->count();
 
-        // Verileri al
+        // Fetch data
         $data = Capsule::table($tableName)->offset($offset)->limit($selectedLimit)->get();
 
-        // C) POST (Satır Silme İşlemi)
+        // C) POST (Delete Row Operation)
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_rows'])) {
             $rowsToDelete = $_POST['delete_rows'];
             foreach ($rowsToDelete as $id) {
-                // Varsayalım ki her tabloda 'id' sütunu vardır
+                // Assume each table has an 'id' column
                 if (in_array('id', $columns)) {
                     Capsule::table($tableName)->where('id', $id)->delete();
-                    $operationResult .= "ID $id başarıyla silindi.<br>";
+                    $operationResult .= "ID $id has been successfully deleted.<br>";
                 } else {
-                    // 'id' sütunu yoksa, uygun bir sütun seçmeniz gerekebilir
-                    $operationResult .= "Tablo '$tableName' 'id' sütununa sahip değil. Silme işlemi yapılamadı.<br>";
+                    // If 'id' column does not exist, you may need to select an appropriate column
+                    $operationResult .= "The table '$tableName' does not have an 'id' column. Delete operation failed.<br>";
                 }
             }
         }
 
-        // D) HTML Çıkışı
+        // D) HTML Output
         echo '<div style="margin:15px;">';
-        echo '<h2>Tablo: ' . htmlspecialchars($tableName) . ' - Veri Yönetimi</h2>';
+        echo '<h2>Table: ' . htmlspecialchars($tableName) . ' - Data Management</h2>';
 
-        // Operasyon sonuç mesajı
+        // Operation result message
         if (!empty($operationResult)) {
             echo '<div class="alert alert-info" role="alert">';
             echo $operationResult;
             echo '</div>';
         }
 
-        // Geri Dönüş Butonu
+        // Back Button
         echo '
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h5>Veri Listesi</h5>
-                <p>Toplam Kayıt: ' . $totalRecords . '</p>
+                <h5>Data List</h5>
+                <p>Total Records: ' . $totalRecords . '</p>
             </div>
             <div>
-                <a href="?module=whmcsdbmanager" class="btn btn-secondary">Geri Dön</a>
+                <a href="?module=whmcsdbmanager" class="btn btn-secondary">Go Back</a>
             </div>
         </div>
         ';
 
-        // Tablo Verisi
+        // Table Data
         if (empty($data)) {
-            echo '<div class="alert alert-warning">Hiç veri bulunamadı.</div>';
+            echo '<div class="alert alert-warning">No data found.</div>';
         } else {
             echo '
             <form method="POST" id="rowActionsForm">
@@ -771,7 +771,7 @@ function display_table_data($tableName, &$operationResult, &$errorMsg)
                 echo '<th>' . htmlspecialchars($column) . '</th>';
             }
             echo '
-                                <th>İşlemler</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -782,9 +782,9 @@ function display_table_data($tableName, &$operationResult, &$errorMsg)
                 foreach ($columns as $column) {
                     echo '<td>' . htmlspecialchars($row->$column) . '</td>';
                 }
-                // Düzenleme butonu etkinleştirildi ve gerekli öznitelikler eklendi
+                // Enable edit button with necessary attributes
                 echo '<td>
-                        <a href="?module=whmcsdbmanager&action=edit&table='.urlencode($tableName).'&id='.urlencode($row->id).'" class="btn btn-sm btn-primary">Düzenle</a>
+                        <a href="?module=whmcsdbmanager&action=edit&table='.urlencode($tableName).'&id='.urlencode($row->id).'" class="btn btn-sm btn-primary">Edit</a>
                       </td>';
                 echo '</tr>';
             }
@@ -793,13 +793,13 @@ function display_table_data($tableName, &$operationResult, &$errorMsg)
                     </table>
                 </div>
 
-                <!-- Satır Silme Butonu -->
-                <button type="submit" class="btn btn-danger" onclick="return confirm(\'Seçili satırları silmek istediğinize emin misiniz?\')">Seçilenleri Sil</button>
+                <!-- Delete Rows Button -->
+                <button type="submit" class="btn btn-danger" onclick="return confirm(\'Are you sure you want to delete the selected rows?\')">Delete Selected</button>
             </form>
             ';
         }
 
-        // Sayfalandırma
+        // Pagination
         $totalPages = ($totalRecords > 0) ? ceil($totalRecords / $selectedLimit) : 1;
         if ($totalPages > 1) {
             echo '<nav class="mt-3"><ul class="pagination">';
@@ -813,22 +813,22 @@ function display_table_data($tableName, &$operationResult, &$errorMsg)
             echo '</ul></nav>';
         }
 
-        echo '</div>'; // container kapanış
+        echo '</div>'; // container closing
     } catch (\Exception $e) {
         echo '<div class="alert alert-danger" role="alert">';
-        echo 'Hata: ' . htmlspecialchars($e->getMessage());
+        echo 'Error: ' . htmlspecialchars($e->getMessage());
         echo '</div>';
     }
 }
 
 /**
- * Düzenleme Formunu Gösterme Fonksiyonu
+ * Function to Display Edit Form
  */
 function display_edit_form($tableName, $rowId, &$operationResult, &$errorMsg)
 {
-    // Güvenlik Önlemleri: CSRF token eklenebilir (opsiyonel)
+    // Security Measures: Optional CSRF token can be added
 
-    // Veritabanı bağlantısını kontrol et
+    // Check database connection
     try {
         Capsule::connection()->getPdo();
         $dbStatus = true;
@@ -839,46 +839,46 @@ function display_edit_form($tableName, $rowId, &$operationResult, &$errorMsg)
 
     if (!$dbStatus) {
         echo '<div class="alert alert-danger" role="alert">';
-        echo 'Veritabanı bağlantısı başarısız: ' . htmlspecialchars($errorMsg);
+        echo 'Database connection failed: ' . htmlspecialchars($errorMsg);
         echo '</div>';
         echo '</div>'; // container
         return;
     }
 
     try {
-        // Tablo sütunlarını al
+        // Get table columns
         $columns = Capsule::getSchemaBuilder()->getColumnListing($tableName);
         if (empty($columns)) {
-            throw new \Exception("Tablo sütunları alınamadı.");
+            throw new \Exception("Failed to retrieve table columns.");
         }
 
-        // Satır verilerini al
+        // Get row data
         $row = Capsule::table($tableName)->where('id', $rowId)->first();
         if (!$row) {
-            throw new \Exception("Satır bulunamadı.");
+            throw new \Exception("Row not found.");
         }
 
-        // Form gönderildiğinde veritabanını güncelle
+        // When form is submitted, update the database
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_row'])) {
             $updateData = [];
             foreach ($columns as $column) {
-                if ($column === 'id') continue; // ID'yi güncelleme
+                if ($column === 'id') continue; // Do not update ID
                 if (isset($_POST[$column])) {
                     $updateData[$column] = $_POST[$column];
                 }
             }
 
             Capsule::table($tableName)->where('id', $rowId)->update($updateData);
-            $operationResult .= "Satır başarıyla güncellendi.<br>";
-            // Satır verilerini güncelle
+            $operationResult .= "Row has been successfully updated.<br>";
+            // Update row data
             $row = Capsule::table($tableName)->where('id', $rowId)->first();
         }
 
-        // Formu oluştur
+        // Create the form
         echo '<div style="margin:15px;">';
         echo '<div class="card mb-4">';
         echo '<div class="card-body">';
-        echo '<h5 class="card-title">Satır Düzenle</h5>';
+        echo '<h5 class="card-title">Edit Row</h5>';
         if (!empty($operationResult)) {
             echo '<div class="alert alert-info" role="alert">';
             echo $operationResult;
@@ -900,16 +900,16 @@ function display_edit_form($tableName, $rowId, &$operationResult, &$errorMsg)
             ';
         }
         echo '
-            <button type="submit" class="btn btn-primary">Güncelle</button>
-            <a href="?module=whmcsdbmanager" class="btn btn-secondary">Vazgeç</a>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <a href="?module=whmcsdbmanager" class="btn btn-secondary">Cancel</a>
         </form>
         ';
         echo '</div>';
-        echo '</div>'; // card kapanış
-        echo '</div>'; // container kapanış
+        echo '</div>'; // card closing
+        echo '</div>'; // container closing
     } catch (\Exception $e) {
         echo '<div class="alert alert-danger" role="alert">';
-        echo 'Hata: ' . htmlspecialchars($e->getMessage());
+        echo 'Error: ' . htmlspecialchars($e->getMessage());
         echo '</div>';
     }
 }
