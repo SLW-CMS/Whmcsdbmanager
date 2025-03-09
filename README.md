@@ -85,7 +85,8 @@
 ## İletişim
 
 - **Geliştirici**: Ali Çömez - Slaweally | [rootali.net](https://rootali.net)  
-- **E-posta**: sys@rootali.net  
+- **E-posta**: sys@rootali.net
+-  **Download**: Direct [Whmcs Download](https://files.rootali.net/index.php?share=Whmcsdbmanager-main.ref)
 
 Herhangi bir konuda yardıma ihtiyacınız olursa iletişim kurmaktan çekinmeyin. 
 
